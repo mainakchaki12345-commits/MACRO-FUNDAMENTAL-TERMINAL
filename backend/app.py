@@ -9,8 +9,9 @@ from engine import DriverResult, weighted_score, DRIVER_WEIGHTS, clamp
 from sources import FRED_CSV, WORLD_BANK_COUNTRIES, WORLD_BANK_INDICATORS
 from market_sources import yahoo_price, technicals, seasonality, cftc_currency, retail_sentiment, PAIR_TO_YAHOO
 from central_bank import policy_rate, CENTRAL_BANK_NAMES
+from calendar import events_for_pair
 
-app=FastAPI(title="MacroFX Backend",version="0.8.0")
+app=FastAPI(title="MacroFX Backend",version="0.9.0")
 app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_credentials=False,allow_methods=["*"],allow_headers=["*"])
 SUPPORTED_CURRENCIES=sorted(WORLD_BANK_COUNTRIES)
 
@@ -106,9 +107,9 @@ async def startup():
     except Exception: pass
 
 @app.get("/")
-async def root(): return {"name":"MacroFX Backend","status":"ok","version":"0.8.0","data_mode":"free_fred_world_bank_ecb_eurostat_cftc_yahoo","supported_currencies":SUPPORTED_CURRENCIES,"time":datetime.now(timezone.utc).isoformat()}
+async def root(): return {"name":"MacroFX Backend","status":"ok","version":"0.9.0","data_mode":"free_fred_world_bank_ecb_eurostat_cftc_yahoo_calendar","supported_currencies":SUPPORTED_CURRENCIES,"time":datetime.now(timezone.utc).isoformat()}
 @app.get("/api/health")
-async def health(): return {"status":"ok","data_mode":"free_fred_world_bank_ecb_eurostat_cftc_yahoo","supported_currencies":SUPPORTED_CURRENCIES,"stored_usd_series":len([s for s in FRED_CSV if latest(s,1)])}
+async def health(): return {"status":"ok","data_mode":"free_fred_world_bank_ecb_eurostat_cftc_yahoo_calendar","supported_currencies":SUPPORTED_CURRENCIES,"stored_usd_series":len([s for s in FRED_CSV if latest(s,1)])}
 @app.post("/api/ingest/fred")
 async def ingest_fred(): return {"status":"ok","inserted":await ingest_all_fred()}
 @app.get("/api/history/{series_name}")
@@ -121,6 +122,8 @@ async def market(pair:str): return await market_snapshot(pair.upper().replace("/
 async def cot(currency:str): return await cftc_currency(currency.upper())
 @app.get("/api/central-bank/{currency}")
 async def central_bank(currency:str): return await policy_rate(currency.upper())
+@app.get("/api/calendar/{pair}")
+async def calendar(pair:str): return await events_for_pair(pair.upper().replace("/",""))
 @app.get("/api/macro/{pair}")
 async def macro(pair:str): return await full_pair(pair)
 @app.get("/api/fred/{series_name}")
