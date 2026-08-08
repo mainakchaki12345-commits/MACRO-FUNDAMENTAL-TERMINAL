@@ -37,19 +37,20 @@ async def ingest_fred_series(name: str, limit: int = 120) -> int:
 async def ingest_world_bank(currency: str) -> dict[str, int]:
     result = {}
     for name in WORLD_BANK_INDICATORS:
+        series_key = f"{name}_{currency.upper()}"
         try:
             observations = await world_bank_indicator(currency, name, 30)
             rows = []
             for i, o in enumerate(observations):
                 rows.append({
-                    "source":"World Bank", "series":name, "country":o["country"], "currency":currency.upper(),
+                    "source":"World Bank", "series":series_key, "country":o["country"], "currency":currency.upper(),
                     "timestamp":o["date"], "value":o["value"], "unit":"percent", "frequency":"annual",
                     "release_timestamp":None, "previous_value":observations[i-1]["value"] if i else None,
                     "revision":0, "url":"https://data.worldbank.org/"
                 })
-            result[name] = upsert_observations(rows)
+            result[series_key] = upsert_observations(rows)
         except Exception:
-            result[name] = 0
+            result[series_key] = 0
     return result
 
 async def ingest_all_fred() -> dict[str, int]:
@@ -60,7 +61,6 @@ async def ingest_all_fred() -> dict[str, int]:
             result[name] = await ingest_fred_series(name)
         except Exception:
             result[name] = 0
-    # Free international macro history; keep missing values missing.
     for currency in WORLD_BANK_COUNTRIES:
         result[currency] = sum((await ingest_world_bank(currency)).values())
     return result
